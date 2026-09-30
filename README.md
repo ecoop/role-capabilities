@@ -66,7 +66,15 @@ resolver.has_capability("bob", "admin")         # False
 resolver.set_role("bob", "owner", actor="alice")  # audited override; visible at once
 resolver.resolve("bob")                         # "owner"
 resolver.reset_role("bob", actor="alice")       # back to seed/default
+
+resolver.assignments()                          # {principal: role} for everyone with an assignment
+resolver.roster(["alice", "bob", "carol"])      # resolve each, defaults included — for an admin table
 ```
+
+Role administration lives here — change/reset, and the `assignments` / `roster`
+read helpers. **Identity** lifecycle (adding, removing, or renaming a user) is
+your identity layer's job, not this library's; supply your user list to `roster`
+to show everyone.
 
 Resolution is **override ▸ seed ▸ default**. Overrides are an append-only log
 (latest row wins, `reset` clears), read through a `RoleStore` and TTL-cached; a
