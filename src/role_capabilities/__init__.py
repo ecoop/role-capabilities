@@ -5,13 +5,17 @@ Declare your own closed set of capabilities and your own role → capability
 bundles, then ask a `CapabilityModel` "may this role do X?". Nothing here carries
 an application's vocabulary; the app injects its own names.
 
-Extraction from Rulebook lands incrementally (see ecoop/rulebook#220). Shipped so
-far: the capability engine, role ordering, role resolution (override ▸ seed ▸
-default, TTL-cached, audited) over a pluggable `RoleStore` with in-memory and GCS
-backends, and the role-admin surface (change/reset plus `assignments`/`roster`).
-Identity lifecycle (add/remove/rename a user) stays in the app's identity layer,
-not here. Still to come: an optional FastAPI `require_capability` + guest-auth
-adapter, after which Rulebook adopts the library.
+Extraction from Rulebook lands incrementally (see ecoop/rulebook#220). This core
+module carries the framework-free engine: the capability model, role ordering,
+resolution (override ▸ seed ▸ default, TTL-cached, audited) over a pluggable
+`RoleStore` (in-memory + GCS), and the role-admin surface (change/reset plus
+`assignments`/`roster`). Identity lifecycle (add/remove/rename a user) stays in
+the app's identity layer, not here.
+
+Optional adapters live in their own modules so importing this core needs no extra
+dependency — `role_capabilities.fastapi_dep.make_require_capability` (needs the
+`fastapi` extra) and `role_capabilities.guest_auth_adapter.guest_principal_provider`
+(needs the `guest-auth` extra). Next: Rulebook adopts the library.
 """
 
 from __future__ import annotations

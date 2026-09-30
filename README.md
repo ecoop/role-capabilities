@@ -12,10 +12,11 @@ Rulebook is the first consumer. The core depends on no identity library —
 [guest-auth](https://pypi.org/project/guest-auth/) integrates as an optional
 adapter, so an app can key roles by whatever stable principal it already has.
 
-**Status: early.** The **capability engine** (below) is in; role
-ordering/presentation, resolution, the `RoleStore`, user-admin operations, and
-the FastAPI/guest-auth adapters land incrementally per the design issue. Not yet
-published to PyPI.
+**Status: feature-complete, pre-release.** The engine is all here — capabilities,
+role ordering, resolution over a pluggable `RoleStore` (in-memory + GCS), the
+role-admin read/write surface, and the optional FastAPI + guest-auth adapters.
+Next steps are Rulebook adopting it as the first consumer and the first PyPI
+release; the API may still shift until `1.0`.
 
 ## Usage — the capability engine
 
@@ -75,6 +76,32 @@ Role administration lives here — change/reset, and the `assignments` / `roster
 read helpers. **Identity** lifecycle (adding, removing, or renaming a user) is
 your identity layer's job, not this library's; supply your user list to `roster`
 to show everyone.
+
+## Usage — FastAPI + guest-auth (optional adapters)
+
+The core is framework-free. Two optional adapters (their own modules, so the core
+imports need no extra dependency) wire it into a FastAPI app authenticated by
+guest-auth:
+
+```python
+from fastapi import Depends
+from role_capabilities.fastapi_dep import make_require_capability
+from role_capabilities.guest_auth_adapter import guest_principal_provider
+
+require_capability = make_require_capability(
+    resolver,
+    principal_provider=guest_principal_provider(),   # or lambda: g.recipient to key by a stable id
+    gate_enabled=lambda: settings.demo_mode,         # off → public tier only (fails closed)
+    public_role="beginner",
+)
+
+@app.get("/golds", dependencies=[Depends(require_capability("golds.view"))])
+def golds(): ...
+```
+
+`make_require_capability` needs the `[fastapi]` extra; `guest_principal_provider`
+needs `[guest-auth]`. On a different stack, supply your own `principal_provider`
+callable and skip both.
 
 Resolution is **override ▸ seed ▸ default**. Overrides are an append-only log
 (latest row wins, `reset` clears), read through a `RoleStore` and TTL-cached; a
