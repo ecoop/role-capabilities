@@ -24,7 +24,7 @@ from .capabilities import CapabilityModel, capability_fingerprint
 from .resolution import RESET_SENTINEL, RoleResolver, replay_overrides
 from .store import GcsRoleStore, MemoryRoleStore, RoleStore
 
-__version__ = "0.0.1"
+__version__ = "0.1.0"
 
 __all__ = [
     "RESET_SENTINEL",
