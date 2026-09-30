@@ -12,11 +12,11 @@ Rulebook is the first consumer. The core depends on no identity library —
 [guest-auth](https://pypi.org/project/guest-auth/) integrates as an optional
 adapter, so an app can key roles by whatever stable principal it already has.
 
-**Status: feature-complete, pre-release.** The engine is all here — capabilities,
-role ordering, resolution over a pluggable `RoleStore` (in-memory + GCS), the
-role-admin read/write surface, and the optional FastAPI + guest-auth adapters.
-Next steps are Rulebook adopting it as the first consumer and the first PyPI
-release; the API may still shift until `1.0`.
+**Status: 0.1.0.** The engine is all here — capabilities, role ordering,
+resolution over a pluggable `RoleStore` (in-memory + GCS), the role-admin
+read/write surface, and the optional FastAPI + guest-auth adapters. In use by
+[Rulebook](https://github.com/ecoop/rulebook), its first consumer. The API may
+still shift until `1.0` (see [CHANGELOG](CHANGELOG.md)).
 
 ## Usage — the capability engine
 

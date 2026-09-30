@@ -1,6 +1,6 @@
 [project]
 name = "role-capabilities"
-version = "0.0.1"
+version = "0.1.0"
 description = "App-agnostic capability-based roles: declare your own capabilities and role bundles, resolve a principal's role from a seed plus append-only overrides, and check has_capability(actor, capability) anywhere — web request or CLI. Extracted from Rulebook; guest-auth integrates as an optional adapter."
 readme = "README.md"
 requires-python = ">=3.11"
