@@ -12,8 +12,36 @@ Rulebook is the first consumer. The core depends on no identity library —
 [guest-auth](https://pypi.org/project/guest-auth/) integrates as an optional
 adapter, so an app can key roles by whatever stable principal it already has.
 
-**Status: scaffold.** The API sketched below is the target shape; the extraction
-lands incrementally per the design issue. Not yet published to PyPI.
+**Status: early.** The **capability engine** (below) is in; role
+ordering/presentation, resolution, the `RoleStore`, user-admin operations, and
+the FastAPI/guest-auth adapters land incrementally per the design issue. Not yet
+published to PyPI.
+
+## Usage — the capability engine
+
+```python
+from role_capabilities import CapabilityModel
+
+MODEL = CapabilityModel(
+    capabilities={"read", "write", "admin"},
+    roles={
+        "guest":  frozenset(),
+        "member": {"read", "write"},
+        "owner":  {"read", "write", "admin"},
+    },
+    default_role="member",
+    aliases={"legacy_admin": "owner"},  # old ids keep resolving after a rename
+)
+
+MODEL.has_capability("member", "write")   # True
+MODEL.has_capability("member", "admin")   # False
+MODEL.capabilities_for("wizard")          # frozenset()  — unknown role fails closed
+MODEL.canonical_role("legacy_admin")      # "owner"
+```
+
+Construction validates the declaration (every bundle stays within the closed set;
+`default_role` and alias targets must be real roles) and raises `ValueError` on a
+malformed one; queries fail closed.
 
 ## Install
 
@@ -43,3 +71,4 @@ See [ecoop/rulebook#220](https://github.com/ecoop/rulebook/issues/220) for the
 full extraction plan.
 
 _Last updated: 2026-09-30_
+

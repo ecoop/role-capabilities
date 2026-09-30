@@ -1,22 +1,20 @@
 # Copyright (c) 2026 Eric Cooper.
 """role-capabilities — app-agnostic, capability-based roles.
 
-Scaffold only. The extraction from Rulebook lands incrementally; see the design
-issue ecoop/rulebook#220 for the target API and scope. What ships here so far is
-the package skeleton and its version, so the distribution builds and imports
-cleanly on every supported interpreter.
+Declare your own closed set of capabilities and your own role → capability
+bundles, then ask a `CapabilityModel` "may this role do X?". Nothing here carries
+an application's vocabulary; the app injects its own names.
 
-The intended surface, once extracted:
-
-    - a capability engine (app-injected capability set + role → bundle map),
-    - role resolution (seed + append-only overrides, latest wins, reset → seed),
-    - a RoleStore protocol (read_rows / append_row) with GCS and SQL backends,
-    - has_capability(actor, capability) usable outside any web request, and
-    - an optional FastAPI require_capability + a guest-auth actor adapter.
+Extraction from Rulebook lands incrementally (see ecoop/rulebook#220). Shipped so
+far: the capability engine. Still to come: role ordering/presentation, resolution
+(seed + append-only overrides), a pluggable RoleStore (GCS / SQL), user-admin
+operations, and an optional FastAPI `require_capability` + guest-auth adapter.
 """
 
 from __future__ import annotations
 
+from .capabilities import CapabilityModel, capability_fingerprint
+
 __version__ = "0.0.1"
 
-__all__ = ["__version__"]
+__all__ = ["CapabilityModel", "__version__", "capability_fingerprint"]
