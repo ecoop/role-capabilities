@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Gates every supported interpreter on: the dependency tree resolves and
+# installs, and the pytest suite (currently the import guard) passes. Floor is
+# 3.11 so Rulebook — which runs 3.11–3.14 — can consume this across its matrix.
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13", "3.14"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install (project + test deps)
+        run: uv sync --no-dev --group test
+
+      - name: Pytest
+        run: uv run --no-sync pytest -q

@@ -1,0 +1,37 @@
+[project]
+name = "role-capabilities"
+version = "0.0.1"
+description = "App-agnostic capability-based roles: declare your own capabilities and role bundles, resolve a principal's role from a seed plus append-only overrides, and check has_capability(actor, capability) anywhere — web request or CLI. Extracted from Rulebook; guest-auth integrates as an optional adapter."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { file = "LICENSE" }
+authors = [{ name = "Eric Cooper", email = "eric@cooper.nu" }]
+keywords = ["rbac", "authorization", "capabilities", "roles", "guest-auth"]
+# Core is pure-stdlib and depends on no identity or storage library — those are
+# optional adapters below, so an app can take the authorization logic without
+# pulling in guest-auth, GCS, or FastAPI.
+dependencies = []
+
+[project.optional-dependencies]
+guest-auth = ["guest-auth>=0.1.1"]      # default current-actor resolver adapter
+gcs = ["google-cloud-storage>=2.0"]     # GCS RoleStore backend (append-only jsonl)
+fastapi = ["fastapi>=0.110"]            # thin require_capability dependency
+
+[project.urls]
+Homepage = "https://github.com/ecoop/role-capabilities"
+Issues = "https://github.com/ecoop/role-capabilities/issues"
+
+[dependency-groups]
+dev = ["ruff>=0.7.0"]
+test = ["pytest>=8.0"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/role_capabilities"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--tb=short"
