@@ -8,8 +8,10 @@ application's vocabulary — no `ask`, no `golds.*`. The app constructs a
 (bundles stay within the closed set) and answers membership queries.
 
 This is the *mechanism* half of the split the roadmap draws: capabilities decide
-what a role may **do**. Ordering, presentation, resolution, and persistence are
-separate concerns that land in later slices (see ecoop/rulebook#220).
+what a role may **do**; a role's ladder position (`order`) is a separate,
+presentational axis that no authorization check reads. Presentation beyond
+ordering (names, colors, descriptions) stays in the app; resolution and
+persistence land in later slices (see ecoop/rulebook#220).
 """
 
 from __future__ import annotations
@@ -48,6 +50,10 @@ class CapabilityModel:
         aliases: legacy or synonym role id → canonical role id, applied on every
             read so assignments stored under an old id survive a rename. Each
             target must be a declared role, and an alias id must not shadow one.
+        order: the declared roles listed low → high, for the presentational
+            ladder (`ordered_roles` / `role_order`). Must be a permutation of the
+            declared roles. Optional — when omitted, roles are ordered as
+            declared, so listing ``roles`` low → high needs no separate ``order``.
     """
 
     def __init__(
@@ -57,6 +63,7 @@ class CapabilityModel:
         roles: Mapping[str, Iterable[str]],
         default_role: str,
         aliases: Mapping[str, str] | None = None,
+        order: Iterable[str] | None = None,
     ) -> None:
         self.capabilities: frozenset[str] = frozenset(capabilities)
         self.roles: dict[str, frozenset[str]] = {
@@ -64,7 +71,13 @@ class CapabilityModel:
         }
         self.aliases: dict[str, str] = dict(aliases or {})
         self.default_role: str = default_role
+        self._order: tuple[str, ...] = (
+            tuple(order) if order is not None else tuple(self.roles)
+        )
         self._validate()
+        self._order_index: dict[str, int] = {
+            role: i for i, role in enumerate(self._order)
+        }
 
     def _validate(self) -> None:
         for role, caps in self.roles.items():
@@ -87,6 +100,15 @@ class CapabilityModel:
                 raise ValueError(
                     f"alias {alias!r} shadows a declared role of the same id"
                 )
+        if len(self._order) != len(set(self._order)):
+            raise ValueError("order contains duplicate role ids")
+        if set(self._order) != set(self.roles):
+            missing = sorted(set(self.roles) - set(self._order))
+            extra = sorted(set(self._order) - set(self.roles))
+            raise ValueError(
+                f"order must be a permutation of the declared roles "
+                f"(missing: {missing}, unknown: {extra})"
+            )
 
     def canonical_role(self, role: str) -> str:
         """Map a legacy / synonym role id to its canonical id; pass others through."""
@@ -107,3 +129,16 @@ class CapabilityModel:
     def role_fingerprint(self, role: str) -> str:
         """Fingerprint of a role's current capability bundle (empty set hashes too)."""
         return capability_fingerprint(self.capabilities_for(role))
+
+    def ordered_roles(self) -> tuple[str, ...]:
+        """The declared roles low → high (the ``order`` given, else declaration order)."""
+        return self._order
+
+    def role_order(self, role: str) -> int:
+        """0-based ladder position of a role (alias-aware); -1 if not a declared role.
+
+        A presentational / sort hint only — authorization never reads this. -1
+        (rather than 0) marks an unranked role, so it is distinct from whatever
+        role sits at the bottom of the ladder.
+        """
+        return self._order_index.get(self.canonical_role(role), -1)
