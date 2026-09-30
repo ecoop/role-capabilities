@@ -1,5 +1,10 @@
 # role-capabilities
 
+[![PyPI](https://img.shields.io/pypi/v/role-capabilities)](https://pypi.org/project/role-capabilities/)
+[![CI](https://github.com/ecoop/role-capabilities/actions/workflows/ci.yml/badge.svg)](https://github.com/ecoop/role-capabilities/actions/workflows/ci.yml)
+![Python](https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13%20%7C%203.14-blue)
+![License](https://img.shields.io/badge/license-MIT-blue)
+
 App-agnostic, capability-based roles for Python apps. Declare your own closed
 set of capabilities and your own role → capability bundles; resolve a
 principal's effective role from a seed plus append-only overrides; and check
