@@ -47,6 +47,33 @@ explicitly if your `roles` dict isn't already in ladder order. Ordering is a
 presentational/sort axis only — no authorization check reads it — and names,
 colors, and descriptions stay in the app.
 
+## Usage — resolving a principal's role
+
+```python
+from role_capabilities import RoleResolver, MemoryRoleStore, GcsRoleStore
+
+resolver = RoleResolver(
+    model=MODEL,
+    store=MemoryRoleStore(),                    # or GcsRoleStore("bucket", "roles.jsonl")
+    seed={"alice": "owner"},                    # static baseline, keyed by principal
+)
+resolver.assert_seeded("owner")                 # bootstrap guard — fail closed at startup
+
+resolver.resolve("alice")                       # "owner"  (seed)
+resolver.resolve("bob")                         # "member" (default)
+resolver.has_capability("bob", "admin")         # False
+
+resolver.set_role("bob", "owner", actor="alice")  # audited override; visible at once
+resolver.resolve("bob")                         # "owner"
+resolver.reset_role("bob", actor="alice")       # back to seed/default
+```
+
+Resolution is **override ▸ seed ▸ default**. Overrides are an append-only log
+(latest row wins, `reset` clears), read through a `RoleStore` and TTL-cached; a
+backend read failure reuses the last good snapshot rather than failing the check.
+Everything is keyed by an app-supplied **principal id** and the checks take it
+explicitly, so the resolver works in a web request or a plain CLI / batch job.
+
 Construction validates the declaration (every bundle stays within the closed set;
 `default_role` and alias targets must be real roles) and raises `ValueError` on a
 malformed one; queries fail closed.

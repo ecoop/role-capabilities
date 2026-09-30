@@ -15,9 +15,12 @@ next slice; this is the pure replay it will build on.
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Mapping
+import time
+from collections.abc import Callable, Iterable, Mapping
+from datetime import UTC, datetime
 
 from .capabilities import CapabilityModel
+from .store import RoleStore
 
 RESET_SENTINEL = "reset"
 """A row whose role is this value clears the principal's override."""
@@ -44,3 +47,124 @@ def replay_overrides(
         elif model.is_valid_role(role):
             out[principal] = model.canonical_role(role)
     return out
+
+
+class RoleResolver:
+    """Resolve a principal's effective role: override ▸ seed ▸ default.
+
+    Ties a `CapabilityModel` (the vocabulary), a `RoleStore` (the override log),
+    and a static seed together. Reads of the override log are TTL-cached and
+    survive a backend read failure (last-good is reused), so authorization never
+    hard-fails on a transient store hiccup. Writes (`set_role` / `reset_role`)
+    append an audited row and bust the cache so the change is visible at once.
+
+    Everything is keyed by an app-supplied **principal id** (a string), and the
+    core checks take that principal explicitly — so this works in a web request
+    or a plain CLI / batch job, with no framework or request context. Mapping an
+    identity (a token, a guest, a session) to its principal id is the caller's
+    job (and the FastAPI/guest-auth adapter's, in a later slice).
+
+    Args:
+        model: the capability model (vocabulary, aliases, default role).
+        store: the override-log backend.
+        seed: static ``{principal: role}`` baseline; every role must be valid.
+        ttl_seconds: how long a replayed override snapshot is cached.
+        clock: monotonic time source (injectable for tests).
+    """
+
+    def __init__(
+        self,
+        *,
+        model: CapabilityModel,
+        store: RoleStore,
+        seed: Mapping[str, str] | None = None,
+        ttl_seconds: float = 30.0,
+        clock: Callable[[], float] = time.monotonic,
+    ) -> None:
+        self._model = model
+        self._store = store
+        self._ttl = ttl_seconds
+        self._clock = clock
+        seed = seed or {}
+        bad = sorted({r for r in seed.values() if not model.is_valid_role(r)})
+        if bad:
+            raise ValueError(f"seed assigns unknown roles: {bad}")
+        self._seed: dict[str, str] = {
+            principal: model.canonical_role(role) for principal, role in seed.items()
+        }
+        self._cache: tuple[float, dict[str, str]] | None = None
+
+    # ── resolution ──────────────────────────────────────────────────────────
+
+    def resolve(self, principal: str | None) -> str:
+        """Effective role for a principal: override ▸ seed ▸ default."""
+        if principal is None:
+            return self._model.default_role
+        overrides = self._effective_overrides()
+        if principal in overrides:
+            return overrides[principal]
+        if principal in self._seed:
+            return self._seed[principal]
+        return self._model.default_role
+
+    def capabilities_for(self, principal: str | None) -> frozenset[str]:
+        """The capability bundle a principal effectively holds."""
+        return self._model.capabilities_for(self.resolve(principal))
+
+    def has_capability(self, principal: str | None, capability: str) -> bool:
+        """True if the principal's effective role holds ``capability``."""
+        return self._model.has_capability(self.resolve(principal), capability)
+
+    def _effective_overrides(self) -> dict[str, str]:
+        now = self._clock()
+        if self._cache is not None and now < self._cache[0]:
+            return self._cache[1]
+        try:
+            overrides = replay_overrides(self._store.read_rows(), model=self._model)
+        except Exception:  # noqa: BLE001 — authz must survive a bad store read
+            overrides = self._cache[1] if self._cache is not None else {}
+        self._cache = (now + self._ttl, overrides)
+        return overrides
+
+    # ── mutation (audited) ────────────────────────────────────────────────────
+
+    def set_role(self, principal: str, role: str, *, actor: str | None = None) -> None:
+        """Assign ``role`` to ``principal`` — appends an audited override row."""
+        if not self._model.is_valid_role(role):
+            raise ValueError(f"unknown role {role!r}")
+        self._store.append_row(
+            self._audited(
+                {"principal": principal, "role": self._model.canonical_role(role)},
+                actor,
+            )
+        )
+        self._cache = None
+
+    def reset_role(self, principal: str, *, actor: str | None = None) -> None:
+        """Clear ``principal``'s override so it falls back to the seed/default."""
+        self._store.append_row(
+            self._audited({"principal": principal, "role": RESET_SENTINEL}, actor)
+        )
+        self._cache = None
+
+    def _audited(self, row: dict[str, object], actor: str | None) -> dict[str, object]:
+        row = dict(row)
+        row["at"] = datetime.now(UTC).isoformat()
+        if actor is not None:
+            row["actor"] = actor
+        return row
+
+    # ── bootstrap ─────────────────────────────────────────────────────────────
+
+    def assert_seeded(self, role: str) -> None:
+        """Raise unless some seeded principal holds ``role`` — a bootstrap guard.
+
+        Call at startup with your top/superuser role so a deploy can't come up
+        with no one able to administer it. Checks the seed only: overrides can't
+        exist before someone is seeded to write them.
+        """
+        canonical = self._model.canonical_role(role)
+        if canonical not in self._seed.values():
+            raise RuntimeError(
+                f"no seeded principal holds role {role!r}; refusing to bootstrap"
+            )
