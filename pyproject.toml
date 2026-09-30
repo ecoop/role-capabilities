@@ -23,7 +23,10 @@ Issues = "https://github.com/ecoop/role-capabilities/issues"
 
 [dependency-groups]
 dev = ["ruff>=0.7.0"]
-test = ["pytest>=8.0"]
+# The optional adapters (FastAPI dependency, guest-auth actor provider) stay
+# optional for consumers via the extras above; the test run installs them so CI
+# exercises those modules.
+test = ["pytest>=8.0", "fastapi>=0.110", "guest-auth>=0.1.1"]
 
 [build-system]
 requires = ["hatchling"]

@@ -798,6 +798,8 @@ dev = [
     { name = "ruff" },
 ]
 test = [
+    { name = "fastapi" },
+    { name = "guest-auth" },
     { name = "pytest" },
 ]
 
@@ -811,7 +813,11 @@ provides-extras = ["guest-auth", "gcs", "fastapi"]
 
 [package.metadata.requires-dev]
 dev = [{ name = "ruff", specifier = ">=0.7.0" }]
-test = [{ name = "pytest", specifier = ">=8.0" }]
+test = [
+    { name = "fastapi", specifier = ">=0.110" },
+    { name = "guest-auth", specifier = ">=0.1.1" },
+    { name = "pytest", specifier = ">=8.0" },
+]
 
 [[package]]
 name = "ruff"

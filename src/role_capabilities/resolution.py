@@ -94,6 +94,11 @@ class RoleResolver:
         }
         self._cache: tuple[float, dict[str, str]] | None = None
 
+    @property
+    def model(self) -> CapabilityModel:
+        """The capability model this resolver resolves against."""
+        return self._model
+
     # ── resolution ──────────────────────────────────────────────────────────
 
     def resolve(self, principal: str | None) -> str:
