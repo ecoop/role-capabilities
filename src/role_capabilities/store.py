@@ -16,6 +16,7 @@ table, and keeps the whole assignment history auditable.
 
 from __future__ import annotations
 
+import json
 from collections.abc import Iterable, Mapping
 from typing import Protocol, runtime_checkable
 
@@ -53,3 +54,42 @@ class MemoryRoleStore:
 
     def append_row(self, row: Mapping[str, object]) -> None:
         self._rows.append(dict(row))
+
+
+class GcsRoleStore:
+    """A `RoleStore` backed by an append-only newline-delimited JSON object in GCS.
+
+    Requires the ``gcs`` extra (``role-capabilities[gcs]``). The google-cloud
+    import is lazy — inside the methods, not at module load — so importing this
+    class (and the package) costs nothing until you actually read or write, and an
+    app that uses a different backend needs no GCS dependency.
+
+    ``append_row`` is a read-modify-write of the whole object. That is fine at the
+    volume role overrides change (dozens of entries, rarely) and keeps the object
+    a plain append-only log for audit — the same approach Rulebook shipped.
+    """
+
+    def __init__(self, bucket: str, object_name: str) -> None:
+        self.bucket = bucket
+        self.object_name = object_name
+
+    def _blob(self):
+        from google.cloud import storage
+
+        return storage.Client().bucket(self.bucket).blob(self.object_name)
+
+    def read_rows(self) -> list[dict]:
+        blob = self._blob()
+        if not blob.exists():
+            return []
+        text = blob.download_as_text()
+        return [json.loads(line) for line in text.splitlines() if line.strip()]
+
+    def append_row(self, row: Mapping[str, object]) -> None:
+        blob = self._blob()
+        existing = blob.download_as_text() if blob.exists() else ""
+        line = json.dumps(dict(row), sort_keys=True)
+        blob.upload_from_string(
+            (existing + line + "\n") if existing else (line + "\n"),
+            content_type="application/x-ndjson",
+        )
