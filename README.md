@@ -37,7 +37,15 @@ MODEL.has_capability("member", "write")   # True
 MODEL.has_capability("member", "admin")   # False
 MODEL.capabilities_for("wizard")          # frozenset()  — unknown role fails closed
 MODEL.canonical_role("legacy_admin")      # "owner"
+
+MODEL.ordered_roles()                     # ("guest", "member", "owner")  — low → high
+MODEL.role_order("owner")                 # 2   (-1 for an unranked role)
 ```
+
+Roles order as declared, low → high; pass `order=[...]` to set the ladder
+explicitly if your `roles` dict isn't already in ladder order. Ordering is a
+presentational/sort axis only — no authorization check reads it — and names,
+colors, and descriptions stay in the app.
 
 Construction validates the declaration (every bundle stays within the closed set;
 `default_role` and alias targets must be real roles) and raises `ValueError` on a

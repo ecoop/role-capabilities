@@ -6,9 +6,9 @@ bundles, then ask a `CapabilityModel` "may this role do X?". Nothing here carrie
 an application's vocabulary; the app injects its own names.
 
 Extraction from Rulebook lands incrementally (see ecoop/rulebook#220). Shipped so
-far: the capability engine. Still to come: role ordering/presentation, resolution
-(seed + append-only overrides), a pluggable RoleStore (GCS / SQL), user-admin
-operations, and an optional FastAPI `require_capability` + guest-auth adapter.
+far: the capability engine and role ordering. Still to come: resolution (seed +
+append-only overrides), a pluggable RoleStore (GCS / SQL), user-admin operations,
+and an optional FastAPI `require_capability` + guest-auth adapter.
 """
 
 from __future__ import annotations
