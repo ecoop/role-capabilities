@@ -6,10 +6,12 @@ bundles, then ask a `CapabilityModel` "may this role do X?". Nothing here carrie
 an application's vocabulary; the app injects its own names.
 
 Extraction from Rulebook lands incrementally (see ecoop/rulebook#220). Shipped so
-far: the capability engine, role ordering, and role resolution (override ▸ seed ▸
+far: the capability engine, role ordering, role resolution (override ▸ seed ▸
 default, TTL-cached, audited) over a pluggable `RoleStore` with in-memory and GCS
-backends. Still to come: user-admin operations and an optional FastAPI
-`require_capability` + guest-auth adapter.
+backends, and the role-admin surface (change/reset plus `assignments`/`roster`).
+Identity lifecycle (add/remove/rename a user) stays in the app's identity layer,
+not here. Still to come: an optional FastAPI `require_capability` + guest-auth
+adapter, after which Rulebook adopts the library.
 """
 
 from __future__ import annotations

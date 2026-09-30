@@ -154,6 +154,32 @@ class RoleResolver:
             row["actor"] = actor
         return row
 
+    # ── roster (read) ─────────────────────────────────────────────────────────
+
+    def assignments(self) -> dict[str, str]:
+        """Every principal the system has an explicit opinion about → its role.
+
+        Seed overlaid by current overrides (an override wins; a `reset` drops the
+        override so the seed shows through). Principals with no seed entry and no
+        override are absent — they resolve to the default and aren't listed here.
+        Use this to show "users with an assigned role"; pass the app's full user
+        list to `roster` instead to include everyone at the default.
+        """
+        return {**self._seed, **self._effective_overrides()}
+
+    def roster(self, principals: Iterable[str]) -> dict[str, str]:
+        """Resolve a role for each of ``principals`` (including those at default).
+
+        The app supplies the full set of principals it knows (from its own
+        identity/invite store — the roles library does not enumerate users), and
+        this returns ``{principal: effective_role}`` for building an admin table.
+        """
+        overrides = self._effective_overrides()
+        return {
+            p: (overrides.get(p) or self._seed.get(p) or self._model.default_role)
+            for p in principals
+        }
+
     # ── bootstrap ─────────────────────────────────────────────────────────────
 
     def assert_seeded(self, role: str) -> None:
